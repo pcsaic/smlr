@@ -1,32 +1,39 @@
 package ru.ref.smlr.services;
 
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 @Component
 public class DefaultKeyMapperService implements KeyMapperService {
 
-    private Map<String, String> map = new ConcurrentHashMap<>();
+    private Map<Long, String> map = new ConcurrentHashMap<>();
+
+    @Autowired
+    KeyConverterService converter;
+    AtomicLong sequence = new AtomicLong(10000000L);
 
     @Override
-    public Add add(String key, String link) {
-        if (map.containsKey(key)) {
-            return new Add.AlreadyExist(key);
-        } else {
-            map.put(key, link);
-            return new Add.Success(key, link);
-        }
+    public String add(String link) {
+        lombok.val id = sequence.getAndIncrement();
+        lombok.val key = converter.idToKey(id);
+        map.put(id, link);
+        return key;
     }
 
     @Override
     public Get getLink(String key) {
-        if (map.containsKey(key)) {
-            return new Get.Link(map.get(key));
-        } else {
+        lombok.val id = converter.keyToId(key);
+        lombok.val result = map.get(id);
+        if (result == null) {
             return new Get.NotFound(key);
+        } else {
+            return new Get.Link(result);
         }
+
     }
 }
